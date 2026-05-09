@@ -10,7 +10,7 @@ mkdir -p ~/.skillpacks
 if [ -d ~/.skillpacks/metaportal-skillpack/.git ]; then
   git -C ~/.skillpacks/metaportal-skillpack pull --ff-only
 else
-  git clone https://github.com/Kairox-Agents/skillpack.git ~/.skillpacks/metaportal-skillpack
+  git clone https://github.com/pbans-agent/skillpack.git ~/.skillpacks/metaportal-skillpack
 fi
 
 # 2. Validate

@@ -9,7 +9,7 @@ A Git-backed, agent-installable, agent-maintainable source of truth for reusable
 ```bash
 # 1. Clone the repo
 mkdir -p ~/.skillpacks
-git clone https://github.com/Kairox-Agents/skillpack.git ~/.skillpacks/metaportal-skillpack
+git clone https://github.com/pbans-agent/skillpack.git ~/.skillpacks/metaportal-skillpack
 
 # 2. Validate
 cd ~/.skillpacks/metaportal-skillpack

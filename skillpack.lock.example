@@ -2,7 +2,7 @@
   "pack_name": "metaportal-skillpack",
   "display_name": "Metaportal Skill Pack",
   "pack_version": "0.1.0",
-  "source_repo": "https://github.com/Kairox-Agents/skillpack.git",
+  "source_repo": "https://github.com/pbans-agent/skillpack.git",
   "source_commit": "abc123example",
   "profile": "all",
   "scope": "personal",

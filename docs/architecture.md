@@ -63,7 +63,7 @@ Each installed skill gets a `.skillpack-source.json`:
 {
   "managed_by": "skillpack",
   "pack_name": "metaportal-skillpack",
-  "source_repo": "https://github.com/Kairox-Agents/skillpack",
+  "source_repo": "https://github.com/pbans-agent/skillpack",
   "source_commit": "abc123...",
   "profile": "all",
   "installed_at": "2026-05-09T00:00:00Z"

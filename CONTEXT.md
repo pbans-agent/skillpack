@@ -5,7 +5,7 @@ Building "Skill Pack" — a Git-backed, agent-installable, agent-maintainable so
 
 ## Repo Location
 - Local: `~/felix-projects/skillpack-hermes/`
-- GitHub: TBD (to be created as `Kairox-Agents/skillpack`)
+- GitHub: `https://github.com/pbans-agent/skillpack`
 
 ## Architecture
 - `skillpack.yaml` — pack manifest with profiles
