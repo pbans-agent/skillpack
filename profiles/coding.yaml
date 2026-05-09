@@ -1,0 +1,7 @@
+# Profile: coding
+# Coding and repo-management skills
+include:
+  - "code-*"
+  - "git-*"
+  - "skillpack-maintainer"
+exclude: []

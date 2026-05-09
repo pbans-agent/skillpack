@@ -1,0 +1,38 @@
+name: metaportal-skillpack
+display_name: Metaportal Skill Pack
+version: "0.1.0"
+default_profile: all
+skills_root: skills
+
+profiles:
+  all:
+    description: Install every managed skill.
+    include:
+      - "*"
+    exclude: []
+
+  coding:
+    description: Coding and repo-management skills.
+    include:
+      - "code-*"
+      - "git-*"
+      - "skillpack-maintainer"
+    exclude: []
+
+  research:
+    description: Research, planning, synthesis, and document skills.
+    include:
+      - "research-*"
+      - "planning-*"
+    exclude: []
+    allow_empty: true
+
+install_targets:
+  claude_code:
+    personal_path: "~/.claude/skills"
+    project_path: ".claude/skills"
+
+defaults:
+  install_mode: copy
+  conflict_policy: preserve-local
+  require_validation: true

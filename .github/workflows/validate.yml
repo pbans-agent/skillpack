@@ -1,0 +1,27 @@
+name: Validate Skill Pack
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate Skill Pack
+        run: python3 scripts/skillpack.py validate
+
+      - name: List Skills
+        run: python3 scripts/skillpack.py list
+
+      - name: Run Tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v

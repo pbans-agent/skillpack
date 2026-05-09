@@ -1,0 +1,20 @@
+{
+  "pack_name": "metaportal-skillpack",
+  "display_name": "Metaportal Skill Pack",
+  "pack_version": "0.1.0",
+  "source_repo": "https://github.com/Kairox-Agents/skillpack.git",
+  "source_commit": "abc123example",
+  "profile": "all",
+  "scope": "personal",
+  "target": "~/.claude/skills",
+  "install_mode": "copy",
+  "installed_at": "2026-05-09T00:00:00Z",
+  "skills": {
+    "skillpack-maintainer": {
+      "source_path": "skills/skillpack-maintainer",
+      "hash": "sha256:example",
+      "install_mode": "copy"
+    }
+  },
+  "skipped_conflicts": {}
+}

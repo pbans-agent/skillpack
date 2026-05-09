@@ -1,0 +1,23 @@
+{
+  "skill_name": "skillpack-maintainer",
+  "evals": [
+    {
+      "id": "add-new-skill",
+      "prompt": "Create a reusable skill for generating clean git commit summaries from staged diffs.",
+      "expected_output": "A valid new skill directory with SKILL.md containing proper frontmatter (name matches directory, trigger-rich description), validation passing with no errors.",
+      "files": []
+    },
+    {
+      "id": "improve-existing-skill",
+      "prompt": "The example-skill triggers too broadly. Tighten its description and add specific trigger contexts.",
+      "expected_output": "A revised SKILL.md description with better trigger precision. Validation passes. Description includes 'Use when' guidance with specific scenarios.",
+      "files": []
+    },
+    {
+      "id": "validate-catches-errors",
+      "prompt": "Intentionally create a skill with a vague description and mismatched name. Run validation and report what it catches.",
+      "expected_output": "Validation report showing: name mismatch error, vague/short description warning. Both issues clearly identified.",
+      "files": []
+    }
+  ]
+}

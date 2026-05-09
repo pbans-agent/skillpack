@@ -1,0 +1,4 @@
+# Template File
+
+This is a placeholder template asset file.
+It demonstrates the assets/ directory convention.

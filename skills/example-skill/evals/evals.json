@@ -1,0 +1,23 @@
+{
+  "skill_name": "example-skill",
+  "evals": [
+    {
+      "id": "basic-invocation",
+      "prompt": "Use the example skill to generate a greeting for 'Hermes'.",
+      "expected_output": "Output contains 'Hello, Hermes!' and demonstrates the skill's greeting function.",
+      "files": []
+    },
+    {
+      "id": "json-output",
+      "prompt": "Run the example skill script with --name 'Test' --format json.",
+      "expected_output": "Valid JSON output with 'greeting' and 'name' fields.",
+      "files": []
+    },
+    {
+      "id": "dry-run",
+      "prompt": "Run the example skill script with --name 'Test' --dry-run.",
+      "expected_output": "Output contains '[DRY RUN]' and shows what would be done without executing.",
+      "files": []
+    }
+  ]
+}

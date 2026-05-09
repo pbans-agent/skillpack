@@ -1,0 +1,8 @@
+# Profile: research
+# Research, planning, synthesis, and document skills
+# Empty is intentional in v0.1.0; this profile is reserved for future skills.
+include:
+  - "research-*"
+  - "planning-*"
+exclude: []
+allow_empty: true

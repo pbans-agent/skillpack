@@ -1,0 +1,4 @@
+# Profile: all
+include:
+  - "*"
+exclude: []
