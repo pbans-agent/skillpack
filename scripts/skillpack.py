@@ -773,14 +773,18 @@ def install_skills(args: argparse.Namespace) -> int:
         if dst.exists() or dst.is_symlink():
             existing_marker = read_marker(dst)
             if not existing_marker or existing_marker.get("managed_by") != "skillpack":
-                skipped[name] = "unmanaged skill exists; preserving local copy"
-                if not args.quiet:
-                    print(f"SKIP {name}: unmanaged skill exists at {dst}")
-                continue
+                if getattr(args, "overwrite_unmanaged", False):
+                    if not args.quiet:
+                        print(f"OVERWRITE {name}: replacing unmanaged skill at {dst}")
+                else:
+                    skipped[name] = "unmanaged skill exists; preserving local copy"
+                    if not args.quiet:
+                        print(f"SKIP {name}: unmanaged skill exists at {dst}")
+                    continue
             if not args.dry_run:
                 if dst.is_symlink() or dst.is_file():
                     dst.unlink()
-                else:
+                elif dst.is_dir():
                     shutil.rmtree(dst)
 
         if args.dry_run:
@@ -838,6 +842,26 @@ def read_lock(lock_path: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
+def git_fetch_head() -> Optional[str]:
+    """Return the fetched HEAD of the upstream branch, or None if unavailable."""
+    proc = run_git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
+    if proc.returncode != 0:
+        return None
+    upstream = proc.stdout.strip()
+    proc2 = run_git(["rev-parse", upstream])
+    if proc2.returncode != 0:
+        return None
+    return proc2.stdout.strip()
+
+
+def git_log_oneline(old: str, new: str, max_count: int = 10) -> str:
+    """Return one-line commit log between two SHAs."""
+    proc = run_git(["log", "--oneline", f"--max-count={max_count}", f"{old}..{new}"])
+    if proc.returncode != 0:
+        return ""
+    return proc.stdout.strip()
+
+
 def status(args: argparse.Namespace) -> int:
     manifest = load_manifest()
     skills = discover_skills(manifest)
@@ -845,20 +869,24 @@ def status(args: argparse.Namespace) -> int:
     lock = read_lock(lock_path)
     pack_name = str(manifest.get("name", DEFAULT_PACK_NAME))
 
-    print(f"Skill Pack: {pack_name} ({manifest.get('version')})")
-    print(f"Repo: {git_remote()}")
-    print(f"Current commit: {git_commit()}")
-    print(f"Scope: {args.scope}")
-    print(f"Target: {target}")
-    print(f"Lock file: {lock_path}")
+    current_commit = git_commit()
+    remote = git_remote()
 
+    # Upgrade detection.
+    upgrade_available = False
+    upgrade_commits = ""
+    installed_commit = ""
     if lock:
-        print(f"Installed profile: {lock.get('profile')}")
-        print(f"Installed commit: {lock.get('source_commit')}")
-        print(f"Installed at: {lock.get('installed_at')}")
-    else:
-        print("Installed profile: none (no lock file)")
+        installed_commit = lock.get("source_commit", "")
+        if installed_commit and installed_commit != "unknown" and is_git_repo() and git_has_upstream():
+            # Fetch quietly to get latest upstream without merging.
+            run_git(["fetch", "--quiet"])
+            remote_head = git_fetch_head()
+            if remote_head and remote_head != installed_commit:
+                upgrade_available = True
+                upgrade_commits = git_log_oneline(installed_commit, remote_head)
 
+    # Build status data for both human and JSON output.
     managed: List[str] = []
     unmanaged: List[str] = []
     missing_locked: List[str] = []
@@ -888,6 +916,53 @@ def status(args: argparse.Namespace) -> int:
         for name in (lock.get("skills") or {}).keys():
             if not (target / name).exists() and not (target / name).is_symlink():
                 missing_locked.append(name)
+
+    # JSON output.
+    if getattr(args, "json", False):
+        data = {
+            "pack_name": pack_name,
+            "pack_version": manifest.get("version"),
+            "repo": remote,
+            "current_commit": current_commit,
+            "scope": args.scope,
+            "target": str(target),
+            "lock_file": str(lock_path),
+            "installed_profile": (lock or {}).get("profile"),
+            "installed_commit": installed_commit or None,
+            "installed_at": (lock or {}).get("installed_at"),
+            "upgrade_available": upgrade_available,
+            "upgrade_commits": upgrade_commits if upgrade_available else None,
+            "managed_skills": managed,
+            "modified_skills": modified,
+            "stale_skills": stale,
+            "unmanaged_skills": unmanaged,
+            "missing_locked_skills": missing_locked,
+            "skipped_conflicts": (lock or {}).get("skipped_conflicts", {}),
+        }
+        print(json.dumps(data, indent=2, sort_keys=True))
+        return 0
+
+    # Human-readable output.
+    print(f"Skill Pack: {pack_name} ({manifest.get('version')})")
+    print(f"Repo: {remote}")
+    print(f"Current commit: {current_commit}")
+    print(f"Scope: {args.scope}")
+    print(f"Target: {target}")
+    print(f"Lock file: {lock_path}")
+
+    if lock:
+        print(f"Installed profile: {lock.get('profile')}")
+        print(f"Installed commit: {installed_commit}")
+        print(f"Installed at: {lock.get('installed_at')}")
+    else:
+        print("Installed profile: none (no lock file)")
+
+    if upgrade_available:
+        print(f"\n⬆ Upgrade available! New commits on upstream:")
+        for line in upgrade_commits.splitlines():
+            print(f"    {line}")
+    else:
+        print("\nUp to date.")
 
     print("\nManaged skills:")
     if managed:
@@ -922,7 +997,107 @@ def status(args: argparse.Namespace) -> int:
     return 0
 
 
+def compute_update_diff(
+    old_lock: Dict[str, Any],
+    new_manifest: Dict[str, Any],
+    new_skills: Dict[str, Skill],
+    selected: List[str],
+) -> Dict[str, Any]:
+    """Compare installed lock state against the new repo state.
+
+    Returns a dict describing what changed:
+      added: skills in new selection but not in old lock
+      removed: skills in old lock but not in new selection
+      updated: skills present in both with changed hashes
+      unchanged: skills present in both with same hashes
+    """
+
+    old_skills = old_lock.get("skills") or {}
+    old_names = set(old_skills.keys())
+    new_names = set(selected)
+
+    added = sorted(new_names - old_names)
+    removed = sorted(old_names - new_names)
+
+    updated: List[str] = []
+    unchanged: List[str] = []
+    for name in sorted(new_names & old_names):
+        old_hash = old_skills.get(name, {}).get("hash", "")
+        new_hash = new_skills[name].hash if name in new_skills else ""
+        if old_hash != new_hash:
+            updated.append(name)
+        else:
+            unchanged.append(name)
+
+    return {
+        "added": added,
+        "removed": removed,
+        "updated": updated,
+        "unchanged": unchanged,
+    }
+
+
+def print_update_diff(diff: Dict[str, Any], old_commit: str, new_commit: str) -> None:
+    print(f"\nUpdate diff ({old_commit[:7]}..{new_commit[:7]}):")
+    if diff["added"]:
+        print(f"  + Added: {', '.join(diff['added'])}")
+    if diff["removed"]:
+        print(f"  - Removed from pack: {', '.join(diff['removed'])}")
+    if diff["updated"]:
+        print(f"  ~ Changed: {', '.join(diff['updated'])}")
+    unchanged_count = len(diff["unchanged"])
+    print(f"  = Unchanged: {unchanged_count} skill(s)")
+    total_changes = len(diff["added"]) + len(diff["removed"]) + len(diff["updated"])
+    if total_changes == 0:
+        print("  (no changes detected)")
+
+
+def prune_stale_skills(
+    target: Path,
+    lock: Dict[str, Any],
+    selected: List[str],
+    pack_name: str,
+    dry_run: bool = False,
+    quiet: bool = False,
+) -> List[str]:
+    """Remove installed managed skills that are no longer in the selected profile.
+
+    Returns list of pruned skill names.
+    """
+
+    old_skills = lock.get("skills") or {}
+    pruned: List[str] = []
+    for name in sorted(old_skills.keys()):
+        if name in selected:
+            continue
+        dst = target / name
+        if not dst.exists() and not dst.is_symlink():
+            continue
+        marker = read_marker(dst)
+        if not marker or marker.get("managed_by") != "skillpack" or marker.get("pack_name") != pack_name:
+            continue
+        if dry_run:
+            print(f"[DRY RUN] Would prune stale managed skill: {name}")
+        else:
+            if dst.is_symlink() or dst.is_file():
+                dst.unlink()
+            else:
+                shutil.rmtree(dst)
+            if not quiet:
+                print(f"PRUNED {name} (removed from profile)")
+        pruned.append(name)
+    return pruned
+
+
 def update(args: argparse.Namespace) -> int:
+    manifest = load_manifest()
+    pack_name = str(manifest.get("name", DEFAULT_PACK_NAME))
+
+    # Read existing lock BEFORE pulling to know the baseline.
+    _, lock_path = target_for_scope(args.scope, args.project_path, manifest)
+    old_lock = read_lock(lock_path)
+    old_commit = (old_lock or {}).get("source_commit", "unknown")
+
     if is_git_repo():
         if git_dirty() and not args.allow_dirty:
             raise SkillPackError(
@@ -941,14 +1116,41 @@ def update(args: argparse.Namespace) -> int:
     else:
         print("Not inside a Git repo; skipping git pull.")
 
-    print("Validating...")
-    validation = validate_all(quiet=True)
+    # Reload manifest and skills AFTER pull.
+    manifest = load_manifest()
+    skills = discover_skills(manifest)
+    profile = args.profile or manifest.get("default_profile", "all")
+    selected = resolve_profile(profile, manifest, skills)
+    new_commit = git_commit()
+
+    # Show update diff if we have a previous lock.
+    if old_lock:
+        diff = compute_update_diff(old_lock, manifest, skills, selected)
+        print_update_diff(diff, old_commit, new_commit)
+        total_changes = len(diff["added"]) + len(diff["removed"]) + len(diff["updated"])
+        if total_changes == 0 and not args.prune_managed:
+            print("Nothing to update.")
+            return 0
+    else:
+        print("No previous lock file found; performing full install.")
+
+    print("\nValidating...")
+    validation = validate_all(selected=selected, quiet=True)
     if not validation.ok:
         print_validation(validation)
         raise SkillPackError("refusing to update because validation failed")
     print("Validation passed.")
 
-    print("Installing updated managed skills...")
+    # Prune stale managed skills if requested.
+    if args.prune_managed and old_lock:
+        target, _ = target_for_scope(args.scope, args.project_path, manifest)
+        prune_stale_skills(
+            target, old_lock, selected, pack_name,
+            dry_run=getattr(args, "dry_run", False),
+            quiet=getattr(args, "quiet", False),
+        )
+
+    print("\nInstalling updated managed skills...")
     return install_skills(args)
 
 
@@ -1094,6 +1296,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_install.add_argument("--skip-validation", action="store_true", help="Skip validation before install")
     p_install.add_argument("--dry-run", action="store_true", help="Show actions without writing")
     p_install.add_argument("--quiet", action="store_true", help="Reduce output")
+    p_install.add_argument("--overwrite-unmanaged", action="store_true", help="Overwrite unmanaged skills with same name")
     p_install.set_defaults(func=install_skills)
 
     p_update = sub.add_parser("update", help="Pull latest repo and sync managed skills")
@@ -1106,11 +1309,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_update.add_argument("--quiet", action="store_true", help="Reduce output")
     p_update.add_argument("--allow-dirty", action="store_true", help="Allow update with dirty working tree")
     p_update.add_argument("--no-pull", action="store_true", help="Skip git pull")
+    p_update.add_argument("--prune-managed", action="store_true", help="Remove managed skills no longer in the profile")
+    p_update.add_argument("--overwrite-unmanaged", action="store_true", help="Overwrite unmanaged skills with same name")
     p_update.set_defaults(func=update)
 
     p_status = sub.add_parser("status", help="Show installed state")
     p_status.add_argument("--scope", choices=["personal", "project"], required=True)
     p_status.add_argument("--project-path", help="Project path for --scope project")
+    p_status.add_argument("--json", action="store_true", help="Emit JSON")
     p_status.set_defaults(func=status)
 
     p_pkg = sub.add_parser("package", help="Create zip bundle(s)")

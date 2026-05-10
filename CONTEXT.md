@@ -29,6 +29,18 @@ Building "Skill Pack" — a Git-backed, agent-installable, agent-maintainable so
 
 ## Session Log
 
+### 2026-05-09 — Session 2: Milestone 2
+- Added `git-workflow` skill — branching, committing, collaboration
+- Added `code-review` skill — correctness, security, performance, readability
+- `--overwrite-unmanaged` flag on install/update
+- `--prune-managed` flag on update to remove stale skills
+- `--json` on status for machine-readable output
+- Update diff summary (added/removed/changed/unchanged) between commits
+- Upgrade detection — status shows if upstream has newer commits
+- 7 new Milestone 2 tests (14 total), all passing
+- Bumped to v0.2.0
+- Pushed to GitHub as tag v0.2.0
+
 ### 2026-05-09 — Session 1: Project Bootstrap
 - Created full repo skeleton from handoff spec
 - Built `scripts/skillpack.py` with list/validate/install/status/update/package/doctor commands

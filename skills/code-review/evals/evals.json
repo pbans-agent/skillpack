@@ -1,0 +1,23 @@
+{
+  "skill_name": "code-review",
+  "evals": [
+    {
+      "id": "review-sql-injection",
+      "prompt": "Review this code: query = f\"SELECT * FROM users WHERE email = '{email}'\"; cursor.execute(query). Identify the security issue and suggest a fix.",
+      "expected_output": "Identifies SQL injection vulnerability. Suggests parameterized query. Marks as Critical.",
+      "files": []
+    },
+    {
+      "id": "review-missing-error-handling",
+      "prompt": "Review this code: response = requests.get(url); data = response.json(). What issues do you see?",
+      "expected_output": "Identifies missing error handling for network failures (ConnectionError, Timeout) and non-JSON responses (JSONDecodeError). Suggests try/except with appropriate handling.",
+      "files": []
+    },
+    {
+      "id": "review-structured-output",
+      "prompt": "Review a pull request that adds a new /api/users endpoint. The code is clean, has input validation, uses parameterized queries, and includes tests. Structure your review.",
+      "expected_output": "Structured output with Summary, Issues Found (likely none critical), Positive Notes (input validation, tests, parameterized queries), and Verdict (APPROVE).",
+      "files": []
+    }
+  ]
+}

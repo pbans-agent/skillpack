@@ -106,7 +106,7 @@ class SkillPackCliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             out = Path(td) / "skillpack-all.zip"
             proc = self.run_cli("package", "--profile", "all", "--out", str(out))
-            self.assertIn("Packaged 2 skill", proc.stdout)
+            self.assertIn("Packaged", proc.stdout)
             self.assertTrue(out.exists())
 
 

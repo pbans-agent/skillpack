@@ -1,6 +1,6 @@
 name: metaportal-skillpack
 display_name: Metaportal Skill Pack
-version: "0.1.0"
+version: "0.2.0"
 default_profile: all
 skills_root: skills
 

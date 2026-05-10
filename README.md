@@ -66,6 +66,15 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 | `coding` | Coding and repo-management skills |
 | `research` | Research, planning, and document skills |
 
+## Included Skills
+
+| Skill | Description |
+|-------|-------------|
+| `skillpack-maintainer` | Maintains the Skill Pack repo itself |
+| `git-workflow` | Git branching, committing, and collaboration workflows |
+| `code-review` | Code review for correctness, security, performance |
+| `example-skill` | Reference example showing proper structure |
+
 ## Safety
 
 - **Never** overwrites unmanaged/ad-hoc skills

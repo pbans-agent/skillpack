@@ -1,0 +1,23 @@
+{
+  "skill_name": "git-workflow",
+  "evals": [
+    {
+      "id": "write-commit-message",
+      "prompt": "Given this git diff (adding a new endpoint /api/health that returns {status: 'ok'}), write a conventional commit message.",
+      "expected_output": "A commit message following conventional commit format: type(scope): imperative description. Likely 'feat(api): add health check endpoint' with a body explaining the purpose.",
+      "files": []
+    },
+    {
+      "id": "resolve-conflict",
+      "prompt": "Two branches both modified the same function. Branch A added error handling. Branch B added a new parameter. Resolve the conflict preserving both changes.",
+      "expected_output": "Resolved code that includes both the new parameter and the error handling, with the function signature updated and error handling wrapping the appropriate logic.",
+      "files": []
+    },
+    {
+      "id": "branch-naming",
+      "prompt": "I need to fix a login bug and add a new user settings page. What branches should I create?",
+      "expected_output": "Two branches: fix/login-<descriptor> for the bug and feat/user-settings for the new page. Explains why separate branches keep history clean.",
+      "files": []
+    }
+  ]
+}
