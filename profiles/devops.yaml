@@ -1,0 +1,8 @@
+# Profile: devops
+# Infrastructure, deployment, and project setup skills
+include:
+  - "project-*"
+  - "debug-*"
+  - "git-*"
+  - "skillpack-maintainer"
+exclude: []

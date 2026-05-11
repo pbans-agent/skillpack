@@ -1,6 +1,6 @@
 name: metaportal-skillpack
 display_name: Metaportal Skill Pack
-version: "0.2.0"
+version: "0.3.0"
 default_profile: all
 skills_root: skills
 
@@ -24,8 +24,18 @@ profiles:
     include:
       - "research-*"
       - "planning-*"
+      - "docs-*"
     exclude: []
     allow_empty: true
+
+  devops:
+    description: Infrastructure, deployment, and project setup skills.
+    include:
+      - "project-*"
+      - "debug-*"
+      - "git-*"
+      - "skillpack-maintainer"
+    exclude: []
 
 install_targets:
   claude_code:

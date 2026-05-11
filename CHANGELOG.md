@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented here.
 
+## [0.3.0] - 2026-05-09
+
+### Added
+- `project-bootstrap` skill — scaffold new projects with proper structure and config
+- `debug-helper` skill — systematic debugging and root-cause analysis
+- `docs-writer` skill — technical documentation writing (READMEs, API docs, guides)
+- `devops` profile — infrastructure, deployment, and project setup skills
+- `eval` command — list and describe eval definitions for skills
+- `info` command — show detailed info about a specific skill
+- `--per-skill` flag on package — create individual zip files per skill
+- 13 new tests for Milestone 3 features (27 total)
+
 ## [0.2.0] - 2026-05-09
 
 ### Added

@@ -1,0 +1,17 @@
+{
+  "skill_name": "project-bootstrap",
+  "evals": [
+    {
+      "id": "scaffold-python-cli",
+      "prompt": "Create a new Python CLI tool called 'task-manager' that manages a simple task list. Initialize it with proper project structure, tests, and git.",
+      "expected_output": "A complete project with pyproject.toml, src/task_manager/ with __init__.py and __main__.py, tests/ with at least one test, .gitignore, README.md, and an initial git commit.",
+      "files": []
+    },
+    {
+      "id": "choose-right-template",
+      "prompt": "I want to build a Chrome extension that adds a sidebar to web pages. What project structure should I use?",
+      "expected_output": "Recommends Chrome Extension template with manifest.json, content scripts, popup directory, assets/icons, and tests. Explains why this structure fits browser extensions.",
+      "files": []
+    }
+  ]
+}

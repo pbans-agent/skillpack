@@ -1,0 +1,17 @@
+{
+  "skill_name": "debug-helper",
+  "evals": [
+    {
+      "id": "trace-typeerror",
+      "prompt": "I'm getting this error in my Python code: TypeError: unsupported operand type(s) for +: 'int' and 'str'. The code is: total = count + suffix where count=5 and suffix='items'. Debug this.",
+      "expected_output": "Identifies that count (int) and suffix (str) cannot be concatenated with +. Explains the root cause clearly. Suggests fix: convert count to str for string concatenation or use f-string formatting. Uses the structured debug output format.",
+      "files": []
+    },
+    {
+      "id": "intermittent-failure",
+      "prompt": "My test passes locally but fails in CI about 30% of the time with a timeout error. What should I check?",
+      "expected_output": "Identifies likely causes: race condition, timing dependency, resource contention, or environment differences. Suggests checking for time-dependent code, external service dependencies, and CI resource limits. Recommends adding proper waits/retries rather than sleep.",
+      "files": []
+    }
+  ]
+}

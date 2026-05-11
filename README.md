@@ -39,6 +39,8 @@ python3 scripts/skillpack.py status --scope personal
 | `update` | Update managed skills from the repo |
 | `status` | Show installed skills, source commit, and conflicts |
 | `package` | Create zip bundles for upload |
+| `eval` | List and describe eval definitions for skills |
+| `info` | Show detailed info about a specific skill |
 | `doctor` | Diagnose common issues |
 
 ## Testing
@@ -65,6 +67,7 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 | `all` | Every managed skill |
 | `coding` | Coding and repo-management skills |
 | `research` | Research, planning, and document skills |
+| `devops` | Infrastructure, deployment, and project setup |
 
 ## Included Skills
 
@@ -73,6 +76,9 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 | `skillpack-maintainer` | Maintains the Skill Pack repo itself |
 | `git-workflow` | Git branching, committing, and collaboration workflows |
 | `code-review` | Code review for correctness, security, performance |
+| `project-bootstrap` | Scaffold new projects with proper structure |
+| `debug-helper` | Systematic debugging and root-cause analysis |
+| `docs-writer` | Technical documentation writing |
 | `example-skill` | Reference example showing proper structure |
 
 ## Safety

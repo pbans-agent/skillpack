@@ -1,0 +1,17 @@
+{
+  "skill_name": "docs-writer",
+  "evals": [
+    {
+      "id": "write-readme",
+      "prompt": "Write a README for a Python library called 'fasthash' that provides fast non-cryptographic hashing using xxhash. It supports Python 3.10+ and can be installed via pip.",
+      "expected_output": "A well-structured README with: project name and description, installation via pip, quick start example with runnable code, API reference showing main functions, and license section. Uses clear headers and code blocks.",
+      "files": []
+    },
+    {
+      "id": "document-api-endpoint",
+      "prompt": "Document this API endpoint: POST /api/users — creates a new user. Required fields: email (string), name (string). Optional: role (string, default 'user'). Returns 201 with user object. Returns 400 for validation errors. Returns 409 if email exists.",
+      "expected_output": "Structured API documentation including: description, HTTP method and path, request body with parameter table (name, type, required, description), success response with example, error responses with examples, and any notes on behavior.",
+      "files": []
+    }
+  ]
+}

@@ -1171,6 +1171,29 @@ def package(args: argparse.Namespace) -> int:
         raise SkillPackError("refusing to package because validation failed")
 
     out = Path(args.out or "dist/skillpack.zip").expanduser()
+
+    # Per-skill packaging mode: create individual zips.
+    if getattr(args, "per_skill", False):
+        out_dir = out if out.suffix == "" else out.parent
+        out_dir.mkdir(parents=True, exist_ok=True)
+        packaged = []
+        for name in selected:
+            skill_dir = skills[name].path
+            skill_zip = out_dir / f"{name}.zip"
+            with zipfile.ZipFile(skill_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                for path in sorted(skill_dir.rglob("*")):
+                    if path.is_dir():
+                        continue
+                    rel = path.relative_to(skill_dir).as_posix()
+                    if rel.endswith(MARKER_NAME) or "__pycache__" in rel:
+                        continue
+                    zf.write(path, f"{name}/{rel}")
+            packaged.append(name)
+            print(f"  Packaged {name} -> {skill_zip}")
+        print(f"Packaged {len(packaged)} skill(s) into {out_dir}/")
+        return 0
+
+    # Standard single-zip packaging.
     out.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for name in selected:
@@ -1183,6 +1206,259 @@ def package(args: argparse.Namespace) -> int:
                     continue
                 zf.write(path, rel)
     print(f"Packaged {len(selected)} skill(s) -> {out}")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Eval runner
+# ---------------------------------------------------------------------------
+
+
+def load_evals(skill_dir: Path) -> List[Dict[str, Any]]:
+    evals_path = skill_dir / "evals" / "evals.json"
+    if not evals_path.exists():
+        return []
+    try:
+        data = json.loads(evals_path.read_text(encoding="utf-8"))
+        return data.get("evals", []) if isinstance(data, dict) else []
+    except json.JSONDecodeError as exc:
+        raise SkillPackError(f"invalid evals.json in {skill_dir.name}: {exc}")
+
+
+def load_eval_files(skill_dir: Path, file_list: List[str]) -> Dict[str, str]:
+    files: Dict[str, str] = {}
+    evals_dir = skill_dir / "evals"
+    for name in file_list:
+        path = evals_dir / name
+        if path.exists():
+            files[name] = path.read_text(encoding="utf-8")
+        else:
+            files[name] = f"<file not found: {name}>"
+    return files
+
+
+def run_evals(args: argparse.Namespace) -> int:
+    manifest = load_manifest()
+    skills = discover_skills(manifest)
+
+    if args.skill:
+        if args.skill not in skills:
+            raise SkillPackError(f"skill not found: {args.skill}")
+        target_skills = [args.skill]
+    else:
+        profile = args.profile or manifest.get("default_profile", "all")
+        target_skills = resolve_profile(profile, manifest, skills)
+
+    total_evals = 0
+    total_skills_with_evals = 0
+    all_results: List[Dict[str, Any]] = []
+
+    for name in sorted(target_skills):
+        skill = skills[name]
+        evals = load_evals(skill.path)
+        if not evals:
+            if not args.quiet and not args.json:
+                print(f"\n{name}: no evals defined")
+            continue
+
+        total_skills_with_evals += 1
+        if not args.quiet and not args.json:
+            print(f"\n{'='*60}")
+            print(f"Skill: {name} ({len(evals)} eval(s))")
+            print(f"{'='*60}")
+
+        skill_results: List[Dict[str, Any]] = []
+
+        for eval_def in evals:
+            eval_id = eval_def.get("id", "unnamed")
+            prompt = eval_def.get("prompt", "")
+            expected = eval_def.get("expected_output", "")
+            eval_files = eval_def.get("files", [])
+
+            total_evals += 1
+
+            # Load eval input files if any.
+            file_contents = load_eval_files(skill.path, eval_files) if eval_files else {}
+
+            result: Dict[str, Any] = {
+                "skill": name,
+                "eval_id": eval_id,
+                "prompt": prompt,
+                "expected_output": expected,
+                "files": list(file_contents.keys()),
+                "file_contents": file_contents if file_contents else None,
+            }
+
+            if not args.quiet and not args.json:
+                print(f"\n  Eval: {eval_id}")
+                print(f"  Prompt: {prompt}")
+                if file_contents:
+                    for fname, content in file_contents.items():
+                        print(f"  Input file: {fname} ({len(content)} chars)")
+                print(f"  Expected: {expected}")
+                print(f"  ---")
+                print(f"  To run this eval, give the prompt above to an agent")
+                print(f"  with the '{name}' skill loaded, then compare the")
+                print(f"  output against the expected output.")
+                print(f"  Status: PENDING (requires agent execution)")
+
+            result["status"] = "pending"
+            skill_results.append(result)
+
+        all_results.extend(skill_results)
+
+    # JSON output.
+    if getattr(args, "json", False):
+        output = {
+            "total_skills_with_evals": total_skills_with_evals,
+            "total_evals": total_evals,
+            "evals": all_results,
+        }
+        print(json.dumps(output, indent=2, sort_keys=True))
+        return 0
+
+    # Summary.
+    print(f"\n{'='*60}")
+    print(f"Eval Summary")
+    print(f"{'='*60}")
+    print(f"Skills with evals: {total_skills_with_evals}")
+    print(f"Total evals: {total_evals}")
+    print(f"Status: All {total_evals} eval(s) pending (require agent execution)")
+    print(f"\nNote: Eval prompts are defined in skills/*/evals/evals.json.")
+    print(f"An agent with the skill loaded should execute each prompt and")
+    print(f"compare output against expected_output.")
+
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Info command
+# ---------------------------------------------------------------------------
+
+
+def cmd_info(args: argparse.Namespace) -> int:
+    manifest = load_manifest()
+    skills = discover_skills(manifest)
+    name = args.skill
+
+    if name not in skills:
+        raise SkillPackError(f"skill not found: {name}")
+
+    skill = skills[name]
+
+    if getattr(args, "json", False):
+        data = {
+            "name": skill.name,
+            "description": skill.description,
+            "version": skill.metadata.get("skillpack.version"),
+            "tags": skill.metadata.get("skillpack.tags"),
+            "owner": skill.metadata.get("skillpack.owner"),
+            "source": skill.metadata.get("skillpack.source"),
+            "hash": skill.hash,
+            "path": str(skill.path.relative_to(repo_root())),
+            "has_references": (skill.path / "references").exists(),
+            "has_scripts": (skill.path / "scripts").exists(),
+            "has_assets": (skill.path / "assets").exists(),
+            "has_evals": (skill.path / "evals" / "evals.json").exists(),
+        }
+        # List sub-files.
+        if data["has_references"]:
+            data["reference_files"] = [
+                p.relative_to(skill.path / "references").as_posix()
+                for p in sorted((skill.path / "references").rglob("*"))
+                if p.is_file()
+            ]
+        if data["has_scripts"]:
+            data["script_files"] = [
+                p.relative_to(skill.path / "scripts").as_posix()
+                for p in sorted((skill.path / "scripts").rglob("*"))
+                if p.is_file()
+            ]
+        if data["has_assets"]:
+            data["asset_files"] = [
+                p.relative_to(skill.path / "assets").as_posix()
+                for p in sorted((skill.path / "assets").rglob("*"))
+                if p.is_file()
+            ]
+        if data["has_evals"]:
+            evals = load_evals(skill.path)
+            data["eval_count"] = len(evals)
+            data["eval_ids"] = [e.get("id") for e in evals]
+
+        # Compute which profiles include this skill.
+        profile_list = []
+        for pname, pdata in (manifest.get("profiles") or {}).items():
+            try:
+                resolved = resolve_profile(pname, manifest, skills)
+                if name in resolved:
+                    profile_list.append(pname)
+            except Exception:
+                pass
+        data["profiles"] = profile_list
+
+        print(json.dumps(data, indent=2, sort_keys=True))
+        return 0
+
+    # Human-readable.
+    print(f"Skill: {skill.name}")
+    print(f"Version: {skill.metadata.get('skillpack.version', 'n/a')}")
+    tags = skill.metadata.get("skillpack.tags", "")
+    if tags:
+        print(f"Tags: {tags}")
+    print(f"Path: {skill.path.relative_to(repo_root())}")
+    print(f"Hash: {skill.hash[:24]}...")
+    print(f"\nDescription:")
+    for line in textwrap.wrap(skill.description, width=88, initial_indent="  ", subsequent_indent="  "):
+        print(line)
+
+    # Profiles.
+    profile_list = []
+    for pname, pdata in (manifest.get("profiles") or {}).items():
+        try:
+            resolved = resolve_profile(pname, manifest, skills)
+            if name in resolved:
+                profile_list.append(pname)
+        except Exception:
+            pass
+    if profile_list:
+        print(f"\nProfiles: {', '.join(profile_list)}")
+
+    # Contents.
+    sections = []
+    if (skill.path / "references").exists():
+        refs = [p.relative_to(skill.path / "references").as_posix() for p in sorted((skill.path / "references").rglob("*")) if p.is_file()]
+        sections.append(("References", refs))
+    if (skill.path / "scripts").exists():
+        scripts = [p.relative_to(skill.path / "scripts").as_posix() for p in sorted((skill.path / "scripts").rglob("*")) if p.is_file()]
+        sections.append(("Scripts", scripts))
+    if (skill.path / "assets").exists():
+        assets = [p.relative_to(skill.path / "assets").as_posix() for p in sorted((skill.path / "assets").rglob("*")) if p.is_file()]
+        sections.append(("Assets", assets))
+    if (skill.path / "evals" / "evals.json").exists():
+        evals = load_evals(skill.path)
+        sections.append(("Evals", [f"{e.get('id')}: {e.get('prompt', '')[:60]}..." for e in evals]))
+
+    if sections:
+        print(f"\nContents:")
+        for label, items in sections:
+            print(f"  {label}:")
+            for item in items:
+                print(f"    - {item}")
+
+    # Show SKILL.md body preview.
+    skill_md = skill.path / "SKILL.md"
+    body = skill_md.read_text(encoding="utf-8")
+    parts = body.split("---", 2)
+    if len(parts) >= 3:
+        md_body = parts[2].strip()
+        preview_lines = md_body.splitlines()[:10]
+        print(f"\nSKILL.md preview (first 10 lines):")
+        for line in preview_lines:
+            print(f"  {line}")
+        total_lines = len(md_body.splitlines())
+        if total_lines > 10:
+            print(f"  ... ({total_lines - 10} more lines)")
+
     return 0
 
 
@@ -1322,8 +1598,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_pkg = sub.add_parser("package", help="Create zip bundle(s)")
     p_pkg.add_argument("--profile", default=None, help="Profile to package")
     p_pkg.add_argument("--skill", help="Package a single skill")
-    p_pkg.add_argument("--out", help="Output zip path")
+    p_pkg.add_argument("--out", help="Output zip path or directory (for --per-skill)")
+    p_pkg.add_argument("--per-skill", action="store_true", help="Create individual zip per skill")
     p_pkg.set_defaults(func=package)
+
+    p_eval = sub.add_parser("eval", help="List and describe eval definitions for skills")
+    p_eval.add_argument("--skill", default=None, help="Show evals for a specific skill")
+    p_eval.add_argument("--profile", default=None, help="Show evals for all skills in profile")
+    p_eval.add_argument("--json", action="store_true", help="Emit JSON")
+    p_eval.add_argument("--quiet", action="store_true", help="Reduce output")
+    p_eval.set_defaults(func=run_evals)
+
+    p_info = sub.add_parser("info", help="Show detailed info about a skill")
+    p_info.add_argument("skill", help="Skill name")
+    p_info.add_argument("--json", action="store_true", help="Emit JSON")
+    p_info.set_defaults(func=cmd_info)
 
     p_doc = sub.add_parser("doctor", help="Diagnose common issues")
     p_doc.set_defaults(func=cmd_doctor)

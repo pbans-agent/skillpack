@@ -29,6 +29,18 @@ Building "Skill Pack" — a Git-backed, agent-installable, agent-maintainable so
 
 ## Session Log
 
+### 2026-05-09 — Session 3: Milestone 3
+- Added `project-bootstrap` skill — scaffolding new projects
+- Added `debug-helper` skill — systematic debugging
+- Added `docs-writer` skill — technical documentation
+- Added `devops` profile (project-*, debug-*, git-*, maintainer)
+- `eval` command — list and describe eval definitions
+- `info` command — detailed single-skill info
+- `--per-skill` flag on package for individual zips
+- 27 tests total, all passing
+- Bumped to v0.3.0
+- 7 skills, 4 profiles
+
 ### 2026-05-09 — Session 2: Milestone 2
 - Added `git-workflow` skill — branching, committing, collaboration
 - Added `code-review` skill — correctness, security, performance, readability
